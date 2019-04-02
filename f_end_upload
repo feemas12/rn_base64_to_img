@@ -1,0 +1,235 @@
+import React, { Component } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  AppRegistry,
+  ScrollView,
+  Image,
+  Modal
+} from "react-native";
+import {
+  Header,
+  Body,
+  Content,
+  Title,
+  Form,
+  Label,
+  Input,
+  Button
+} from "native-base";
+import { ImagePicker, Permissions } from "expo";
+import { RkText, RkCard } from "react-native-ui-kitten";
+import { Icon, Fab } from "native-base";
+import axios from "axios";
+import { UtilStyles } from "../constants/styles";
+import Spinner from "react-native-loading-spinner-overlay";
+import mapDispatchToProps from "../redux/actions";
+import mapStateToProps from "../redux/props";
+import { connect } from "react-redux";
+
+export default class Feed extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      post: [],
+      fname: "testFname",
+      lname: "testLname",
+      postContent: "Hello Worlds",
+      active: false,
+      modalVisible: false,
+      image: null,
+      spinner: false
+    };
+  }
+
+  async componentDidMount() {
+    axios.get("http://206.189.147.53:7879/get/service/post").then(res => {
+      this.setState({ post: res.data });
+    });
+    const permission = await Permissions.getAsync(Permissions.CAMERA_ROLL);
+    if (permission.status !== "granted") {
+      const newPermission = await Permissions.askAsync(Permissions.CAMERA_ROLL);
+      if (newPermission.status === "granted") {
+        //its granted.
+      }
+    }
+  }
+
+  setModalVisible(visible) {
+    this.setState({ modalVisible: visible });
+  }
+
+  showPost(getpost) {
+    this.props.reduPost(getpost);
+  }
+
+  setToredux() {
+    let sh_post = this.props.propsReduPost;
+    console.log(sh_post);
+  }
+
+  _pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      base64: true
+    });
+    // console.log(result);
+    if (!result.cancelled) {
+      this.setState({ image: result.uri });
+      axios.post("http://localhost:7879/post/upload/photo", result);
+      console.log("base64 Result : " + result.base64);
+    }
+  };
+
+  render() {
+    let { image } = this.state;
+    return (
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          automaticallyAdjustContentInsets={true}
+          style={[UtilStyles.container, styles.screen]}
+        >
+          {this.state.post.map(item => {
+            return (
+              <View>
+                {/* Card 1 */}
+                <RkCard rkType="shadowed">
+                  <View>
+                    <Image
+                      rkCardImg={true}
+                      source={require("../assets/icon.png")}
+                    />
+                    <View rkCardImgOverlay={true} />
+                  </View>
+                  <View style={{ flexDirection: "row" }}>
+                    <View rkCardHeader={true} style={{ paddingBottom: 2.5 }}>
+                      <Image
+                        source={require("../assets/icon.png")}
+                        style={styles.avatar}
+                      />
+                      <View>
+                        <RkText rkType="header 2xlarge">
+                          {this.state.fname}&nbsp;{this.state.lname}
+                        </RkText>
+                        <RkText rkType="subtitle">6 minutes ago</RkText>
+                      </View>
+                    </View>
+                  </View>
+                  <View rkCardContent={true}>
+                    <RkText rkType="compactCardText">{item.postContent}</RkText>
+                  </View>
+                  {/* <View rkCardFooter={true} /> */}
+                </RkCard>
+                <View>
+                  <Text> &nbsp; </Text>
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+
+        <Modal
+          animationType="slide"
+          transparent={false}
+          visible={this.state.modalVisible}
+          onRequestClose={() => {
+            Alert.alert("Modal has been closed.");
+          }}
+        >
+          <Header>
+            <Body>
+              <Title style={styles.headText}>Input Code</Title>
+            </Body>
+          </Header>
+          <Content>
+            <View>
+              <Button full onPress={this._pickImage}>
+                <Text>Pick an image from camera roll</Text>
+              </Button>
+              {image && (
+                <Image
+                  source={{ uri: image }}
+                  style={{ width: 500, height: 250 }}
+                />
+              )}
+            </View>
+          </Content>
+
+          <View>
+            <Text> &nbsp; &nbsp; </Text>
+          </View>
+
+          <Button
+            full
+            success
+            onPress={() => {
+              this.setModalVisible(!this.state.modalVisible);
+            }}
+          >
+            <Text style={styles.buttonText}>Success</Text>
+          </Button>
+        </Modal>
+
+        <Fab
+          active={this.state.active}
+          direction="up"
+          containerStyle={{}}
+          style={{ backgroundColor: "#5067FF" }}
+          position="bottomRight"
+          onPress={() => this.setState({ active: !this.state.active })}
+          onPress={() => {
+            this.setModalVisible(true);
+          }}
+        >
+          <Icon name="md-image" />
+        </Fab>
+      </View>
+    );
+  }
+}
+
+let styles = StyleSheet.create({
+  screen: {
+    backgroundColor: "#f0f1f5",
+    padding: 12
+  },
+  buttonIcon: {
+    marginRight: 7,
+    fontSize: 19.7
+  },
+  footer: {
+    marginHorizontal: 16
+  },
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    marginRight: 17
+  },
+  dot: {
+    fontSize: 6.5,
+    color: "#0000008e",
+    marginLeft: 2.5,
+    marginVertical: 10
+  },
+  floating: {
+    width: 56,
+    height: 56,
+    position: "absolute",
+    zIndex: 200,
+    right: 16,
+    top: 173
+  },
+  footerButtons: {
+    flexDirection: "row"
+  },
+  overlay: {
+    justifyContent: "flex-end",
+    paddingVertical: 23,
+    paddingHorizontal: 16
+  }
+});
+
+AppRegistry.registerComponent("feed", () => Feed);
